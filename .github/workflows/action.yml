@@ -1,0 +1,27 @@
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+name: Push Raycast Stats to Bark
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Install requirements
+        run: pip install -r requirements.txt
+      - name: Fetch data and push to Bark
+        run: python main.py
+        env:
+          DEVICE_KEY: ${{ secrets.DEVICE_KEY }}
+          BARK_BASE_URL: ${{ secrets.BARK_BASE_URL }}
+          BARK_ENCRYPT_KEY: ${{ secrets.BARK_ENCRYPT_KEY }}
+          BARK_ENCRYPT_IV: ${{ secrets.BARK_ENCRYPT_IV }}
+          RAYCAST_API_URL: ${{ secrets.RAYCAST_API_URL }}
+          ICON: ${{ secrets.ICON }}
