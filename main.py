@@ -24,7 +24,7 @@ BARK_ENCRYPT_KEY = os.environ.get('BARK_ENCRYPT_KEY')  # 16字节AES加密密钥
 BARK_ENCRYPT_IV = os.environ.get('BARK_ENCRYPT_IV')  # 16字节AES加密初始化向量
 
 # 新增常量
-DATA_FILE = 'extension_data.json'
+DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'extension_data.json')
 
 # 创建全局AES密码对象
 KEY = bytes.fromhex(BARK_ENCRYPT_KEY.encode('utf-8').hex())
