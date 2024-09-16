@@ -23,6 +23,9 @@ ICON = os.environ.get('ICON')  # 通知使用的图标URL
 BARK_ENCRYPT_KEY = os.environ.get('BARK_ENCRYPT_KEY')  # 16字节AES加密密钥
 BARK_ENCRYPT_IV = os.environ.get('BARK_ENCRYPT_IV')  # 16字节AES加密初始化向量
 
+# 新增常量
+DATA_FILE = 'extension_data.json'
+
 # 创建全局AES密码对象
 KEY = bytes.fromhex(BARK_ENCRYPT_KEY.encode('utf-8').hex())
 IV_BYTES = bytes.fromhex(BARK_ENCRYPT_IV.encode('utf-8').hex())
@@ -58,6 +61,7 @@ def get_extension_data():
         for ext in data['data']
     ]
 
+
     # 按下载次数降序排序
     return sorted(
         extensions,
@@ -65,30 +69,65 @@ def get_extension_data():
         reverse=True
     )
 
-def format_message(data):
+def load_previous_data():
     """
-    格式化扩展数据为可读的消息字符串
+    从文件加载之前保存的扩展数据
+    
+    Returns:
+        dict: 包含扩展名称和下载次数的字典
+    """
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_current_data(data):
+    """
+    将当前扩展数据保存到文件
     
     Args:
         data (list): 扩展数据列表
+    """
+    data_dict = {ext['name']: ext['download_count'] for ext in data}
+    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data_dict, f)
+
+def format_message(data, prev_data):
+    """
+    格式化扩展数据为可读的消息字符串，并显示下载量的增加
+    
+    Args:
+        data (list): 当前扩展数据列表
+        prev_data (dict): 之前保存的扩展数据
     
     Returns:
         str: 格式化后的消息字符串
     """
-    return "\n".join(
-        f"{index}. {extension['name']}: {extension['download_count']}"
-        for index, extension in enumerate(data, start=1)
-    )
+    text = []
+    for index, extension in enumerate(data, start=1):
+        name = extension['name']
+        current_count = extension['download_count']
+        previous_count = prev_data.get(name, current_count)
+        increase = current_count - previous_count
+        
+        if increase > 0:
+            text.append(f"{index}. {name}: {current_count} | +{increase}")
+        else:
+            text.append(f"{index}. {name}: {current_count}")
+    
+    formatted_text = "\n".join(text)
+    return formatted_text
 
-def send_to_bark(data):
+def send_to_bark(current_data, prev_data):
     """
     将Raycast扩展统计数据发送到Bark
     
     Args:
-        data (list): 扩展数据列表
+        current_data (list): 当扩展数据列表
+        prev_data (dict): 之前保存的扩展数据
     """
     payload = {
-        "body": format_message(data),
+        "body": format_message(current_data, prev_data),
         "title": "Raycast Extension Stats",
         "icon": ICON,
         "group": "Raycast统计",
@@ -104,6 +143,7 @@ def send_to_bark(data):
         print(f"错误信息: {response.text}")
 
 if __name__ == "__main__":
-    # 获取扩展数据并发送到Bark
+    previous_data = load_previous_data()
     extension_data = get_extension_data()
-    send_to_bark(extension_data)
+    send_to_bark(extension_data, previous_data)
+    save_current_data(extension_data)
